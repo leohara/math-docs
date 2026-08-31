@@ -1,0 +1,96 @@
+# Minimal project-scoped Codex execpolicy rules for math-docs.
+
+prefix_rule(
+    pattern = ["sh", ".codex/skills/using-git-worktrees/scripts/worktree-context.sh"],
+    decision = "allow",
+    justification = "Allow the repository's read-only helper to identify the primary and current worktrees.",
+    match = [
+        "sh .codex/skills/using-git-worktrees/scripts/worktree-context.sh",
+    ],
+    not_match = [
+        "sh .codex/skills/using-git-worktrees/scripts/worktree-add.sh docs/example-task",
+        "bash .codex/skills/using-git-worktrees/scripts/worktree-context.sh",
+    ],
+)
+
+prefix_rule(
+    pattern = ["sh", ".codex/skills/using-git-worktrees/scripts/worktree-add.sh"],
+    decision = "allow",
+    justification = "Allow the repository helper to create a checked task worktree from main.",
+    match = [
+        "sh .codex/skills/using-git-worktrees/scripts/worktree-add.sh docs/example-task",
+    ],
+    not_match = [
+        "sh .codex/skills/using-git-worktrees/scripts/worktree-context.sh",
+        "bash .codex/skills/using-git-worktrees/scripts/worktree-add.sh docs/example-task",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "worktree", "list"],
+    decision = "allow",
+    justification = "Allow read-only worktree inventory.",
+    match = [
+        "git worktree list",
+        "git worktree list --porcelain",
+    ],
+    not_match = [
+        "git worktree add -b docs/example-task .worktrees/docs-example-task main",
+        "git worktree remove .worktrees/docs-example-task",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "worktree", "add"],
+    decision = "allow",
+    justification = "Allow creation of a dedicated task worktree.",
+    match = [
+        "git worktree add -b docs/example-task .worktrees/docs-example-task main",
+    ],
+    not_match = [
+        "git worktree list --porcelain",
+        "git worktree remove .worktrees/docs-example-task",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "status"],
+    decision = "allow",
+    justification = "Allow read-only repository status checks.",
+    match = [
+        "git status",
+        "git status --short --branch",
+    ],
+    not_match = [
+        "git diff",
+        "git add main.tex",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "diff"],
+    decision = "allow",
+    justification = "Allow read-only working tree and index diff inspection.",
+    match = [
+        "git diff",
+        "git diff --check",
+        "git diff --cached",
+    ],
+    not_match = [
+        "git status",
+        "git add main.tex",
+    ],
+)
+
+prefix_rule(
+    pattern = ["latexmk", "main.tex"],
+    decision = "allow",
+    justification = "Allow the repository's standard TeX verification command.",
+    match = [
+        "latexmk main.tex",
+    ],
+    not_match = [
+        "latexmk other.tex",
+        "lualatex main.tex",
+    ],
+)
