@@ -81,16 +81,54 @@ if [ -e "$target_path" ] || [ -L "$target_path" ]; then
   exit 1
 fi
 
-if git show-ref --verify --quiet refs/heads/main; then
-  base_ref=main
-elif git show-ref --verify --quiet refs/remotes/origin/main; then
-  base_ref=origin/main
-else
-  echo "Error: main is unavailable locally and at origin/main." >&2
+if ! git show-ref --verify --quiet "refs/heads/$base_branch"; then
+  echo "Error: local main is unavailable." >&2
+  exit 1
+fi
+
+primary_branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+if [ "$primary_branch" != "$base_branch" ]; then
+  echo "Error: the primary checkout must have main checked out." >&2
+  exit 1
+fi
+
+if ! primary_status="$(git status --porcelain --untracked-files=normal)"; then
+  echo "Error: could not inspect the primary checkout status." >&2
+  exit 1
+fi
+
+if [ -n "$primary_status" ]; then
+  echo "Error: the primary checkout must be clean before updating main." >&2
+  exit 1
+fi
+
+if ! git pull --ff-only origin "$base_branch" >&2; then
+  echo "Error: could not fast-forward local main from origin/main." >&2
+  exit 1
+fi
+
+if ! primary_status="$(git status --porcelain --untracked-files=normal)"; then
+  echo "Error: could not inspect the primary checkout status after updating main." >&2
+  exit 1
+fi
+
+if [ -n "$primary_status" ]; then
+  echo "Error: the primary checkout is not clean after updating main." >&2
+  exit 1
+fi
+
+local_main="$(git rev-parse --verify "refs/heads/$base_branch")"
+if ! remote_main="$(git rev-parse --verify "refs/remotes/origin/$base_branch")"; then
+  echo "Error: origin/main is unavailable after the pull." >&2
+  exit 1
+fi
+
+if [ "$local_main" != "$remote_main" ]; then
+  echo "Error: local main does not match origin/main after the pull." >&2
   exit 1
 fi
 
 mkdir -p "$worktree_root"
-git worktree add -b "$branch_name" "$target_path" "$base_ref" >&2
+git worktree add -b "$branch_name" "$target_path" "$base_branch" >&2
 
 printf '%s\n' "$target_path"
