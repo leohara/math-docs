@@ -1,6 +1,6 @@
 ---
 name: using-git-worktrees
-description: Create an isolated task checkout under `.worktrees/` from `main` before repository writes, while protecting the primary checkout and rejecting branch or worktree collisions.
+description: Safely update `main` and create an isolated task checkout under `.worktrees/` before repository writes, while protecting the primary checkout and rejecting branch or worktree collisions.
 ---
 
 # Using Git Worktrees
@@ -28,7 +28,7 @@ Use this skill before creating, editing, moving, renaming, or deleting files in 
    sh .codex/skills/using-git-worktrees/scripts/worktree-add.sh docs/example-task
    ```
 
-   The helper refuses `main`, invalid names, existing local or remote branches, registered worktree conflicts, and occupied target paths. It never falls back to the current branch as its base.
+   The helper refuses `main`, invalid names, existing local or remote branches, registered worktree conflicts, and occupied target paths. After those preflight checks, it requires a clean primary checkout with `main` checked out and runs `git pull --ff-only origin main`. It stops before `git worktree add` if the primary checkout is unsafe, the pull fails, or local `main` does not match `origin/main` afterward, and it never falls back to another base.
 5. Change the execution working directory to the printed path and keep implementation and verification there.
 6. For TeX changes, use the `tex-document-editing` skill and run its standard verification.
 
