@@ -1,10 +1,14 @@
 \documentclass{article}
 \begin{document}
 
-Hello, \LaTeX!
+Given \(a=x_0<\cdots<x_n=b\) and \(\xi_i\in[x_{i-1},x_i]\), the Riemann
+integral of a bounded function \(f\) on \([a,b]\) is the tag-independent
+limit, when it exists,
 
 \[
-  E = mc^2
+  \int_a^b f(x)\,dx
+  := \lim_{\max_i (x_i-x_{i-1}) \to 0}
+  \sum_{i=1}^n f(\xi_i)(x_i-x_{i-1}).
 \]
 
 \end{document}
