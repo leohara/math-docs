@@ -1,14 +1,234 @@
-\documentclass{article}
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage[a4paper,margin=23mm,headheight=14pt]{geometry}
+\usepackage{xcolor}
+\usepackage{framed}
+
+% LuaLaTeX から macOS 標準の日本語フォントを直接参照する。
+\setmainfont[
+  Path=/System/Library/Fonts/,
+  UprightFont={ヒラギノ明朝 ProN.ttc},
+  UprightFeatures={FontIndex=0},
+  BoldFont={ヒラギノ明朝 ProN.ttc},
+  BoldFeatures={FontIndex=2}
+]{ヒラギノ明朝 ProN.ttc}
+\newfontfamily\headingfont[
+  Path=/System/Library/Fonts/,
+  FontIndex=0
+]{ヒラギノ角ゴシック W8.ttc}
+
+\definecolor{ink}{HTML}{202635}
+\definecolor{accent}{HTML}{314E70}
+\definecolor{highlight}{HTML}{0F766E}
+\definecolor{soft}{HTML}{EEF3F6}
+\definecolor{shadecolor}{HTML}{EEF3F6}
+\definecolor{rulegray}{HTML}{B9C5CE}
+
+\color{ink}
+\linespread{1.10}
+\setlength{\parindent}{1em}
+\setlength{\parskip}{0.25em}
+\setlength{\abovedisplayskip}{0.8em}
+\setlength{\belowdisplayskip}{0.8em}
+\setlength{\FrameSep}{0.9em}
+\setlength{\FrameRule}{0pt}
+\emergencystretch=2em
+
+% 空白を日本語の改行候補として使い、紙面上には余分な語間を残さない。
+\spaceskip=0pt plus 0.08em
+\xspaceskip=0pt plus 0.08em
+
+% 最小構成の TeX Live でも和文を自然に改行できるよう、LuaTeX の入力
+% コールバックで和文文字間に改行可能な微小グルーを置く。句読点の直前と
+% 開き括弧の直後は候補から外し、簡単な禁則処理も行う。
+\newcommand{\jbreak}{\hskip 0pt plus 0.06em minus 0.02em\relax}
+
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{0pt}%
+  {1.8ex plus .4ex minus .2ex}{0.75ex}%
+  {\headingfont\large\color{accent}}}
+\renewcommand\thesection{\arabic{section}}
+\makeatother
+
+\newtheoremstyle{factorization}%
+  {0.2em}{0.2em}{\normalfont}{}% body spacing and font
+  {\headingfont\color{accent}}{}{0.65em}{}
+\theoremstyle{factorization}
+\newtheorem*{factorizationtheorem}{因子分解定理（離散型）}
+
+\newcommand{\given}{\mathrel{|}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\coloneqq}{\mathrel{\mathop{:}}=}
+\newcommand{\keyterm}[1]{{\headingfont\color{highlight}#1}}
+
+\pagestyle{plain}
+
 \begin{document}
+\directlua{
+  local opening = {
+    ["「"] = true, ["『"] = true, ["（"] = true,
+    ["［"] = true, ["【"] = true, ["〈"] = true,
+    ["《"] = true
+  }
+  local closing = {
+    ["、"] = true, ["。"] = true, ["，"] = true,
+    ["．"] = true, ["」"] = true, ["』"] = true,
+    ["）"] = true, ["］"] = true, ["】"] = true,
+    ["〉"] = true, ["》"] = true
+  }
+  local function is_japanese(char)
+    local cp = utf8.codepoint(char)
+    return (cp >= 0x3000 and cp <= 0x30ff)
+       or (cp >= 0x3400 and cp <= 0x9fff)
+       or (cp >= 0xf900 and cp <= 0xfaff)
+  end
+  local function add_japanese_breaks(line)
+    local chars = {}
+    for _, cp in utf8.codes(line) do
+      table.insert(chars, utf8.char(cp))
+    end
+    local result = {}
+    for index, char in ipairs(chars) do
+      table.insert(result, char)
+      local next_char = chars[index + 1]
+      if is_japanese(char)
+         and not opening[char]
+         and next_char ~= nil
+         and next_char ~= string.char(125)
+         and not closing[next_char] then
+        table.insert(result, string.char(92) .. "jbreak ")
+      end
+    end
+    return table.concat(result)
+  end
+  luatexbase.add_to_callback(
+    "process_input_buffer",
+    add_japanese_breaks,
+    "japanese-line-breaks"
+  )
+}
 
-Given \(a=x_0<\cdots<x_n=b\) and \(\xi_i\in[x_{i-1},x_i]\), the Riemann
-integral of a bounded function \(f\) on \([a,b]\) is the tag-independent
-limit, when it exists,
+\begin{center}
+  {\headingfont\fontsize{25}{31}\selectfont\color{accent} 因子分解定理\par}
+  \vspace{0.5em}
+  {\large 十分統計量を特徴づける確率の分解\par}
+  \vspace{0.65em}
+  {\color{rulegray}\rule{0.78\textwidth}{0.8pt}\par}
+\end{center}
 
+\vspace{0.6em}
+
+統計量 $T(X)$ が パラメータ $\theta$ について 十分であるとは、標本 $X$ を 観測したあとに残る $\theta$ に関する情報が、$T(X)$ に 集約されていることをいう。因子分解定理は この性質を、標本の同時確率質量関数の形から 判定する。
+
+\begin{shaded}
+\noindent{\headingfont\color{accent}中心となる見方}\par
+\smallskip
+\noindent
+\color{ink}
+標本 $x$ の確率を、同じ統計量の値をもつ標本のなかでの条件付き確率と、統計量そのものの確率との積に分ける。十分性は 前者から $\theta$ への依存を取り除き、後者に $\theta$ への依存を集める。
+\end{shaded}
+\color{ink}
+
+\section{設定と十分性}
+
+パラメータ空間を $\Theta$、可算な標本空間を $\mathcal X$ とし、確率変数 $X$ の分布を $\Prob_\theta$ で表す。標本全体の同時確率質量関数を
 \[
-  \int_a^b f(x)\,dx
-  := \lim_{\max_i (x_i-x_{i-1}) \to 0}
-  \sum_{i=1}^n f(\xi_i)(x_i-x_{i-1}).
+  p_\theta(x) \coloneqq \Prob_\theta(X=x),
+  \qquad x\in\mathcal X,\quad \theta\in\Theta
 \]
+とする。また、$T\colon\mathcal X\to\mathcal T$ を 統計量とする。
+
+統計量 $T$ が $\theta$ について \keyterm{十分統計量} であるとは、$\Prob_\theta(T(X)=t)>0$ となる各 $t$ について、条件付き分布
+\[
+  \Prob_\theta(X=x\given T(X)=t)
+\]
+が $\theta$ に依存しないことをいう。すなわち、$T(X)$ の値を知ったもとでは、$X$ の残りのばらつき方に $\theta$ の情報が残らない。
+
+\section{定理}
+
+\begin{shaded}
+\begin{factorizationtheorem}
+$T(X)$ が $\theta$ について十分統計量であることと、非負関数 $h\colon\mathcal X\to[0,\infty)$ および $g_\theta\colon\mathcal T\to[0,\infty)$ が存在して
+\begin{equation}
+  p_\theta(x)=g_\theta\!\bigl(T(x)\bigr)h(x)
+  \label{eq:factorization}
+\end{equation}
+と書けることは同値である。ここで $h$ は $\theta$ に依存せず、$g_\theta$ は $x$ に $T(x)$ を通じてのみ依存する。
+\end{factorizationtheorem}
+\end{shaded}
+\color{ink}
+
+式~\eqref{eq:factorization} では、$\theta$ に関する部分を $g_\theta(T(x))$ が受けもち、標本 $x$ に固有で $\theta$ と無関係な部分を $h(x)$ が受けもつ。この役割分担が 十分性そのものである。
+
+\section{証明：十分性から分解へ}
+
+$T$ が十分統計量であるとする。標本 $x\in\mathcal X$ を一つ固定し、$t=T(x)$ とおく。$\Prob_\theta(T(X)=t)>0$ ならば、確率の積の公式から
+\begin{align}
+  p_\theta(x)
+    &= \Prob_\theta(X=x) \notag\\
+    &= \Prob_\theta\!\bigl(X=x\given T(X)=t\bigr)
+       \Prob_\theta\!\bigl(T(X)=t\bigr) \notag\\
+    &= \Prob_\theta\!\bigl(X=x\given T(X)=T(x)\bigr)
+       \Prob_\theta\!\bigl(T(X)=T(x)\bigr).
+  \label{eq:product}
+\end{align}
+
+十分性により、式~\eqref{eq:product} の第1因子は $\theta$ に依存しない。そこで、その値を
+\[
+  h(x)
+  \coloneqq
+  \Prob_\theta\!\bigl(X=x\given T(X)=T(x)\bigr)
+\]
+とおく。一方、第2因子は $x$ に $T(x)$ を通じてのみ依存し、$\theta$ には依存してよいから、
+\[
+  g_\theta(t)
+  \coloneqq
+  \Prob_\theta\!\bigl(T(X)=t\bigr)
+\]
+とおける。したがって、
+\[
+  \boxed{\;p_\theta(x)=h(x)g_\theta\!\bigl(T(x)\bigr)\;}
+\]
+を得る。ある $\theta$ のもとで $\Prob_\theta(T(X)=t)=0$ ならば、そのファイバー $\{x:T(x)=t\}$ 上では $p_\theta(x)=0$ であり、$g_\theta(t)=0$ とすれば同じ等式が成り立つ。どの $\theta$ のもとでも起こらない $t$ については、そのファイバー上の $h(x)$ を任意に定めてよい。
+
+\section{逆向き：分解から十分性へ}
+
+逆に、式~\eqref{eq:factorization} の分解が成り立つとする。$T(X)=t$ となる標本をまとめ、
+\[
+  H(t)\coloneqq\sum_{y:\,T(y)=t}h(y)
+\]
+とおけば、
+\[
+  \Prob_\theta(T(X)=t)
+  =\sum_{y:\,T(y)=t}p_\theta(y)
+  =g_\theta(t)H(t).
+\]
+したがって $\Prob_\theta(T(X)=t)>0$ のとき、$T(x)=t$ を満たす $x$ について
+\begin{align*}
+  \Prob_\theta(X=x\given T(X)=t)
+  &=\frac{p_\theta(x)}{\Prob_\theta(T(X)=t)}\\
+  &=\frac{g_\theta(t)h(x)}{g_\theta(t)H(t)}
+    =\frac{h(x)}{H(t)}.
+\end{align*}
+右辺は $\theta$ に依存しない。ゆえに $T$ は十分統計量である。
+
+\section{連続型の場合について}
+
+以上の証明は、点確率 $\Prob_\theta(X=x)$ を用いる \keyterm{離散型} の議論である。連続型では通常 $\Prob_\theta(X=x)=0$ なので、式~\eqref{eq:product} を点確率の等式として使うことはできない。
+
+各 $\Prob_\theta$ が共通の測度に関して密度 $p_\theta$ をもつ場合には、適切な正則性のもとで、
+\[
+  p_\theta(x)=g_\theta\!\bigl(T(x)\bigr)h(x)
+\]
+という密度の分解が 十分性を特徴づける。考え方は離散型と同じだが、厳密な証明では 条件付き密度、または条件付き分布の適切な版を用いる必要がある。したがって、離散型の点確率の公式を そのまま連続型に読み替えるのではなく、密度に対する対応物として理解する。
+
+\vfill
+\begin{center}
+  {\color{rulegray}\rule{0.58\textwidth}{0.6pt}}\\[-0.1em]
+  {\small\headingfont\color{accent}
+  十分性は「条件付き分布から $\theta$ が消える」こと、分解はその事実を式の形にしたものである。}
+\end{center}
 
 \end{document}
